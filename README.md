@@ -16,21 +16,131 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# README
 
-## Learn More
+## Project Overview
 
-To learn more about Next.js, take a look at the following resources:
+This project implements a delegator model for handling various intents using Large Language Models (LLMs). The architecture is designed to classify user intents and delegate the processing to the appropriate module. The project is structured to be scalable and maintainable, allowing easy addition of new modules as needed.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+mia_core/
+    .gitignore
+    .next/
+        app-build-manifest.json
+        build/
+        build-manifest.json
+        cache/
+        fallback-build-manifest.json
+        package.json
+        react-loadable-manifest.json
+        server/
+        static/
+        trace
+        transform.js
+        transform.js.map
+        types/
+    app/
+        api/
+        favicon.ico
+        globals.css
+        layout.tsx
+        page.tsx
+    eslint.config.mjs
+    modules/
+        fileManager.ts
+        weather.ts
+        stocks.ts
+    next-env.d.ts
+    next.config.ts
+    package.json
+    postcss.config.mjs
+    public/
+    README.md
+    tailwind.config.ts
+    test/
+    tsconfig.json
+    utils/
+        intentClassifier.ts
+```
 
-## Deploy on Vercel
+## Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 1. Intent Classification
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The intent classification is handled by the `classifyIntent` function located in [`utils/intentClassifier.ts`](utils/intentClassifier.ts). This function takes a user message as input and returns the classified intent.
+
+### 2. Modules
+
+The project includes several modules that handle specific intents. Each module exports a function that processes the message related to its intent. The modules are located in the [`modules`](modules) directory:
+- [`fileManager.ts`](modules/fileManager.ts)
+- [`weather.ts`](modules/weather.ts)
+- [`stocks.ts`](modules/stocks.ts)
+
+### 3. Delegator
+
+The delegator is implemented in the [`route.ts`](app/api/route.ts) file. It receives the user request, classifies the intent, and delegates the processing to the appropriate module based on the classified intent.
+
+#### Example Code Snippet from `route.ts`
+
+```typescript
+import { NextResponse } from "next/server";
+import { classifyIntent } from "../../../utils/intentClassifier";
+import weather from "@/modules/weather";
+import stocks from "@/modules/stocks";
+import fileManager from "@/modules/fileManager";
+
+type ModuleFunction = (message: string) => Promise<any>;
+
+const modules: Record<string, ModuleFunction> = {
+    weather,
+    stocks,
+    fileManagement: fileManager,
+};
+
+export async function POST(req: Request) {
+    try {
+        const { message } = await req.json();
+
+        // Classify intent using Ollama
+        const intent = await classifyIntent(message);
+        if (!intent || !modules[intent]) {
+            return NextResponse.json({
+                error: `Intent not recognized or unsupported: ${intent}`,
+            });
+        }
+
+        // Call the respective module
+        const response = await modules[intent](message);
+        return NextResponse.json(response);
+    } catch (error) {
+        return NextResponse.json({ error: error.message });
+    }
+}
+```
+
+## Adding New Modules
+
+To add a new module:
+1. Create a new file in the [`modules`](modules) directory.
+2. Export a function that processes the message related to the new intent.
+3. Update the `modules` object in [`route.ts`](app/api/route.ts) to include the new module.
+
+Example:
+
+```typescript
+import newModule from "@/modules/newModule";
+
+const modules: Record<string, ModuleFunction> = {
+    weather,
+    stocks,
+    fileManagement: fileManager,
+    newIntent: newModule,
+};
+```
+
+## Conclusion
+
+This architecture allows for easy scalability and maintainability by separating the concerns of intent classification and intent handling. Each module is responsible for processing a specific intent, making the system modular and extensible.
