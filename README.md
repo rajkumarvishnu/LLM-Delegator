@@ -28,20 +28,7 @@ This project implements a delegator model for handling various intents using Lar
 ```
 mia_core/
     .gitignore
-    .next/
-        app-build-manifest.json
-        build/
-        build-manifest.json
-        cache/
-        fallback-build-manifest.json
-        package.json
-        react-loadable-manifest.json
-        server/
-        static/
-        trace
-        transform.js
-        transform.js.map
-        types/
+    
     app/
         api/
         favicon.ico
@@ -58,7 +45,6 @@ mia_core/
     package.json
     postcss.config.mjs
     public/
-    README.md
     tailwind.config.ts
     test/
     tsconfig.json
